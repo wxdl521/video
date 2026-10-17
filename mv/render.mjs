@@ -35,7 +35,7 @@ function playwrightChromes() {
 }
 const CHROME = CHROMES.find(p => p && existsSync(p));
 if (!CHROME) { console.error('Chrome not found: pass --chrome=<path> or set CHROME_PATH'); process.exit(1); }
-// --cast=pig|clawd renders the same film with another cast (studio.html?cast=…), into its own frames folder
+// --cast=pig|claude renders the same film with another cast (studio.html?cast=…), into its own frames folder
 const fps = +(args.fps || 24), FRAMES_DIR = args.cast ? `out/frames_${args.cast}` : 'out/frames';
 const run = (cmd, a) => new Promise((ok, bad) => { const p = spawn(cmd, a, { stdio: 'inherit' }); p.on('close', c => c ? bad(new Error(cmd + ' exited ' + c)) : ok()); });
 const times = s => String(s).split(',').map(Number);
