@@ -73,7 +73,7 @@ function birdie(x, y, u, o = {}) {
   const belly = lan ? COL.lanBelly : COL.belly, sw = clamp(u / 15, .4, 2.4), sq = o.sq || 0;
   const dy = (o.dy || 0) * u, H0 = 1.6 * u;            // legs are 1.6u long; the body sits on them
   rs('shadow');
-  if (!o.noShadow) { const f = 1 - Math.min(.6, Math.abs(o.dy || 0) * .07); paint(ellPts(x, y + .1 * u, 3.6 * u * f, .7 * u * f, 18), { wash: PAL.ink, washOp: 45, ink: null }); }
+  if (!o.noShadow) { const f = 1 - Math.min(.6, Math.abs(o.dy || 0) * .07); paint(ellPts(x, y + .1 * u, 3.6 * u * f, .7 * u * f, 18), { fill: PAL.ink, fillOp: 80, bleed: .25, tex: .3, border: .1, ink: null }); }
   push(); translate(x + (o.dx || 0) * u, y + dy); if (o.rot) rotate(o.rot); scale((o.flip ? -1 : 1) * (1 + sq * .6), 1 - sq);
   // legs
   rs('legs');
@@ -89,7 +89,7 @@ function birdie(x, y, u, o = {}) {
     rs('wing' + (near ? 'N' : 'F'));
     const d = [Math.cos(a), Math.sin(a)], n = [-d[1], d[0]], L = 3.6 * u;
     const P = [[px, py], [px + d[0] * L * .45 + n[0] * .5 * u, py + d[1] * L * .45 + n[1] * .5 * u], [px + d[0] * L, py + d[1] * L]];
-    paint(ribbon(P, 2.3 * u, .5 * u), { wash: near ? mixCol(col, dk, .35) : mixCol(dk, PAL.ink, .2), ink: PAL.ink, sw: sw * .85 });
+    paint(ribbon(P, 2.3 * u, .5 * u), { wash: near ? mixCol(col, dk, .35) : mixCol(dk, PAL.ink, .2), fill: dk, fillOp: 50, tex: .5, ink: PAL.ink, sw: sw * .85 });
     // two feather lines
     if (near && u > 8) for (const f of [.55, .8]) inkLine([[px + d[0] * L * f + n[0] * .55 * u, py + d[1] * L * f + n[1] * .55 * u], [px + d[0] * L * (f + .14), py + d[1] * L * (f + .14)]], sw * .6, PAL.ink, 'inkfine', 0);
     return [px + d[0] * L, py + d[1] * L, a];
@@ -98,10 +98,10 @@ function birdie(x, y, u, o = {}) {
   // tail
   rs('tail');
   if (!front) { const ta = (o.tail || 0) + .1 * Math.sin(T * 3); push(); translate(-3.3 * u, by + .6 * u); rotate(-.5 + ta);
-    paint(ribbon([[0, 0], [-1.4 * u, -.2 * u], [-2.6 * u, -.1 * u]], 1.8 * u, 1.2 * u), { wash: dk, ink: PAL.ink, sw: sw * .85 }); pop(); }
+    paint(ribbon([[0, 0], [-1.4 * u, -.2 * u], [-2.6 * u, -.1 * u]], 1.8 * u, 1.2 * u), { wash: dk, fill: col, fillOp: 50, tex: .4, ink: PAL.ink, sw: sw * .85 }); pop(); }
   // body
   rs('body');
-  paint(ellPts(0, by, 4.1 * u, 3.7 * u, 30, u * .04), { wash: col, ink: PAL.ink, sw });
+  paint(ellPts(0, by, 4.1 * u, 3.7 * u, 30, u * .04), { wash: col, fill: dk, fillOp: 35, tex: .5, bleed: .05, ink: PAL.ink, sw });
   rs('belly');
   paint(ellPts(front ? 0 : .9 * u, by + 1.3 * u, 2.6 * u, 2.1 * u, 22, u * .03), { wash: belly, ink: null });
   // tuft: three little feathers
@@ -112,7 +112,7 @@ function birdie(x, y, u, o = {}) {
   if (o.scarf) {
     rs('scarf');
     const k = clamp(o.scarf), sy = by + .3 * u;
-    paint(ribbon([[-3.9 * u, sy - .6 * u], [-1 * u, sy + .3 * u], [2 * u, sy + .2 * u], [lerp(-3.9, 3.9, k) * u, sy - .7 * u]].slice(0, k > .5 ? 4 : 3), 1.3 * u, 1.1 * u), { wash: COL.scarf, ink: PAL.ink, sw: sw * .8 });
+    paint(ribbon([[-3.9 * u, sy - .6 * u], [-1 * u, sy + .3 * u], [2 * u, sy + .2 * u], [lerp(-3.9, 3.9, k) * u, sy - .7 * u]].slice(0, k > .5 ? 4 : 3), 1.3 * u, 1.1 * u), { wash: COL.scarf, fill: COL.scarfDk, fillOp: 50, tex: .5, ink: PAL.ink, sw: sw * .8 });
     if (k > .8) { const sway = .2 * Math.sin(T * 3); paint(ribbon([[-2.6 * u, sy], [-3.3 * u + sway * u, sy + 2 * u], [-3.1 * u + sway * 2 * u, sy + 3.6 * u]], 1.1 * u, .9 * u), { wash: COL.scarf, ink: PAL.ink, sw: sw * .8 });
       for (let i = 0; i < 3; i++) inkLine([[(-3.6 + i * .35 + sway * 2) * u, sy + 3.6 * u], [(-3.6 + i * .35 + sway * 2) * u, sy + 4.2 * u]], sw * .6, COL.scarfDk, 'inkfine', 0); }
   }
@@ -169,7 +169,7 @@ function memBit(x, y, r, k = 1, key = 'bit') {
   boilSeed('bit ' + key);
   glow(x, y, r * 5, COL.gold, .8 * k);
   const tw = 1 + .15 * Math.sin(T * 7 + x * .01);
-  paint(starPts(x, y, r * tw * k, .42, 4, -Math.PI / 2 + .2 * Math.sin(T * 2 + y)), { wash: '#FFF0C4', ink: mixCol(PAL.ochre, PAL.ink, .3), sw: clamp(r / 25, .3, 1) });
+  paint(starPts(x, y, r * tw * k, .42, 4, -Math.PI / 2 + .2 * Math.sin(T * 2 + y)), { wash: '#FFF0C4', fill: COL.gold, fillOp: 90, ink: mixCol(PAL.ochre, PAL.ink, .3), sw: clamp(r / 25, .3, 1) });
 }
 // the glass jar: (x, y) = bottom centre, s = height/2. o.crack 0..1 (visible crack), o.bow 0..1 (ribbon wrapped + bow),
 // o.fill = number of pieces inside, o.glow 0..1, o.silhouette 0..1 (a faint bird made of light)
@@ -178,7 +178,7 @@ function memJar(x, y, s, o = {}) {
   const w = s * .82, h = s * 1.7, top = y - h, sw = clamp(s / 60, .5, 1.6);
   const gl = o.glow || 0;
   if (gl > .01) glow(x, y - h * .45, s * 2.6, COL.gold, gl);
-  flat(rrPts(x - w, top + s * .25, 2 * w, h - s * .25, w * .45), COL.glass, 80);
+  paint(rrPts(x - w, top + s * .25, 2 * w, h - s * .25, w * .45), { fill: COL.glass, fillOp: 70, bleed: .05, tex: .4, ink: null });
   // pieces inside
   const n = Math.round(o.fill || 0);
   for (let i = 0; i < n; i++) {
@@ -195,7 +195,7 @@ function memJar(x, y, s, o = {}) {
   // shine
   inkLine([[x - w * .65, top + s * .6], [x - w * .72, top + h * .55]], sw * 2.2, PAL.cream, 'ink', .4);
   // neck and cork
-  paint(rrPts(x - w * .62, top, w * 1.24, s * .34, s * .08), { wash: '#C99A6A', ink: PAL.ink, sw });
+  paint(rrPts(x - w * .62, top, w * 1.24, s * .34, s * .08), { wash: '#C99A6A', fill: COL.wood, fillOp: 60, tex: .6, ink: PAL.ink, sw });
   if (o.crack) { const k = clamp(o.crack); inkLine([[x + w * .2, top + s * .55], [x + w * .38, top + s * .8], [x + w * .25, top + s * 1.0], [x + w * .45, top + s * 1.25]].slice(0, 2 + Math.round(k * 2)), sw * 1.1, PAL.ink, 'inkfine', 0); }
   if (o.bow > .01) {
     const k = clamp(o.bow), by2 = top + s * .9;
@@ -212,7 +212,7 @@ function memJar(x, y, s, o = {}) {
 function feather(x, y, s, a = 0, key = 'f') {
   boilSeed('feather ' + key);
   push(); translate(x, y); rotate(a);
-  paint(ribbon([[0, 0], [s * .5, -s * .12], [s, 0]], s * .08, s * .3).map(([px, py]) => [px, py]), { wash: COL.lan, ink: PAL.ink, sw: clamp(s / 60, .4, 1.2) });
+  paint(ribbon([[0, 0], [s * .5, -s * .12], [s, 0]], s * .08, s * .3).map(([px, py]) => [px, py]), { wash: COL.lan, fill: COL.lanDk, fillOp: 60, tex: .4, ink: PAL.ink, sw: clamp(s / 60, .4, 1.2) });
   inkLine([[-s * .15, 0], [s * .95, 0]], clamp(s / 70, .3, 1), PAL.ink, 'inkfine', 0);
   pop();
 }
@@ -373,16 +373,10 @@ function paintWipe(p, cols = [PAL.clayDk, PAL.clay]) {
   pop();
 }
 
-// ---------- software-GL speed fix ----------
-// Under SwiftShader (no GPU, e.g. a cloud container) each p5.brush watercolour fill costs about a second, so there they
-// are painted as flat washes instead. A real GPU keeps them.
-let _softGL = null;
+// ---------- brush bookkeeping for flat() ----------
 const _paintAt = paintAt;
 paintAt = (pts, o) => {
-  if (_softGL === null) { try { _softGL = /swiftshader/i.test(window.gpuInfo()); } catch (e) { _softGL = false; } }
   BRUSH_DIRTY = true;
-  // watercolour fills cost ~1 s each there even without texture: keep the flat wash (or turn the fill into one)
-  if (_softGL && o.fill) o = o.wash ? { ...o, fill: null } : { ...o, wash: o.fill, washOp: (o.fillOp ?? 170) * .7, fill: null };
   _paintAt(pts, o);
 };
 const _inkLine = inkLine;
