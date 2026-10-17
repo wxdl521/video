@@ -5,10 +5,7 @@
 // { from, to, at }: at time `at`, the characters `from` get a painted strike and `to` pops in above them (e.g. the fans'
 // 大经理 → 大锦鲤 joke); opts.hold = seconds the line stays up after it ends, lifted above the next line.
 // Times are clip times: the song's LRC time minus the clip start (see references/music-video.md). Let lines run into each other.
-const LY = [
-  // [3.02, 6.02, '第一句歌词'],
-  // [6.07, 9.03, 'a line that holds', { sing: 2.2, hold: 1.4, pun: { from: 'old', to: 'new', at: 8.4 } }],
-];
+// LY = [[start, end, "line", opts?]] comes from src/lyrics.js, generated from assets/song.lrc by scripts/lrc2js.py.
 const KFONT = '"Ma Shan Zheng", "Kaiti SC", "STKaiti", serif';
 window.EXTRA_FONTS = [[`64px ${KFONT}`, LY.map(l => l[2] + ((l[3] && l[3].pun && l[3].pun.to) || '')).join('')]];
 

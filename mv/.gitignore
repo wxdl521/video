@@ -5,3 +5,4 @@ out/
 assets/*.mp3
 assets/*.m4a
 assets/*.lrc
+src/lyrics.js
