@@ -1,0 +1,7 @@
+node_modules
+out/
+
+# song audio and lyrics stay local, not in the repo
+assets/*.mp3
+assets/*.m4a
+assets/*.lrc
