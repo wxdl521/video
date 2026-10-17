@@ -4,7 +4,7 @@
   const TJ = 780, JJ = 1260, JS = 110, HC = [980, 500], HR = 120, UJ = 24;
   const heartSpots = heartPts(HC[0], HC[1], HR * .8, 10);
   const nuanXJ = lt => stroll(lt, 0, .35, 700, 1010, UJ);
-  const chestJ = u => [2.0 * u, -4.6 * u];
+  const chestJ = chestAt;
   function shotJ(t, lt, dur) {
     const push_ = ease(seg(lt, 2.4, dur - .45)), dive = easeIn(seg(lt, dur - .45, dur));
     const w = nuanXJ(lt);
@@ -38,9 +38,9 @@
     // the heart: lights up (2.0), flies to her (2.25–2.55), then she holds it against her chest
     if (lt >= 2.0 && !hugged) {
       const k = ease(seg(lt, 2.25, 2.55)), p = [lerp(HC[0], chestW[0], k), lerp(HC[1], chestW[1], k)];
-      heartLight(...p, lerp(HR, 2.2 * UJ, k), lit, 'jh');
+      heartLight(...p, lerp(HR, chestR(UJ), k), lit, 'jh');
     }
-    birdie(w.x, TJ, UJ, { ...o, chest: hugged ? (u) => heartLight(...chestJ(u), 2.2 * u, 1, 'jhug') : null });
+    birdie(w.x, TJ, UJ, { ...o, chest: hugged ? (u) => heartLight(...chestJ(u), chestR(u), 1, 'jhug') : null });
     if (lt > 2.0 && lt < 2.4) glow(...HC, 400, COL.gold, .6 * (1 - seg(lt, 2.0, 2.4)));
     camEnd();
     if (lt < .45) irisFast(960, 540, lerp(0, 1500, easeIn(lt / .45)));
@@ -49,7 +49,7 @@
 
   // ---------- K · 45.5–49.0 · on the windowsill with the heart, days and seasons rush past outside; it keeps glowing ----------
   const WX = 560, WY = 150, WW = 800, WH = 500, SILL = WY + WH + 10, UK = 22, NXK = 900;
-  const chestK = u => [2.0 * u, -4.6 * u];
+  const chestK = chestAt;
   function outsideK(t, lt) {
     const u = frac(lt / 1.15 + .1), night = .5 - .5 * Math.cos(u * TAU);
     flatRect(WX, WY, WW, WH, mixCol('#9CCBEA', COL.night, night));
@@ -86,14 +86,14 @@
     camBegin(cx, cy, zoom);
     roomWithWindow(WX, WY, WW, WH, () => outsideK(t, lt), { lamp: '#F6D29A' });
     floorAndTable(0, 820, 0);
-    birdie(NXK, SILL, UK, { ...o, chest: (u) => heartLight(...chestK(u), 2.2 * u, 1, 'khug') });
+    birdie(NXK, SILL, UK, { ...o, chest: (u) => heartLight(...chestK(u), chestR(u), 1, 'khug') });
     camEnd();
     flashFast(Math.max(.9 * (1 - seg(lt, 0, .35)), .9 * dive), '#FFE7B8');
   }
 
   // ---------- L · 49.0–56.0 · the rooftop again, alone, in the scarf: she lets the heart go; it blooms into a firework ----------
   const NX = 900, RY = 836, U = 24, SKY = [1150, 260];
-  const chestL = u => [2.0 * u, -4.6 * u];
+  const chestL = chestAt;
   function nuanL(lt) {
     const m = birdMoods(lt, [[0, 'calm', { lookX: .8 }], [1.0, 'hopeful', { lookY: -.4 }], [2.25, 'hopeful', { lookY: -1, lookX: .4 }], [3.03, 'wow', { lookY: -1, lookX: .3 }],
       [3.6, 'smileCry', { lookY: -.8 }], [4.45, 'look', { lookX: .7, lookY: .1 }], [5.15, 'happy', { lookX: .5, lookY: .4 }]]);
@@ -121,7 +121,7 @@
     if (lit > .02) glow(980, 640, 700, '#FFB0C0', .5 * lit);
     const held = lt < 2.25 ? 'chest' : lt >= 5.1 ? 'spark' : null;
     birdie(NX, RY, U, { ...o,
-      chest: held === 'chest' && lt < 1.6 ? (u) => heartLight(...chestL(u), 2 * u, 1, 'lhug') : null,
+      chest: held === 'chest' && lt < 1.6 ? (u) => heartLight(...chestL(u), chestR(u), 1, 'lhug') : null,
       hold: lt >= 1.6 && lt < 2.25 ? (u) => heartLight(0, -.5 * u, 2 * u, 1, 'lup') : held === 'spark' ? (u) => memBit(0, 0, u * .7, 1, 'lheld') : null });
     // one spark drifts down into her wing, as on the first night
     if (lt > 4.3 && lt < 5.1) { const q = seg(lt, 4.35, 5.1); memBit(lerp(1180, TIPL[0], ease(q)) + 50 * Math.sin(q * 7) * (1 - q), lerp(380, TIPL[1], q), 15 * Math.min(1, (lt - 4.3) * 4), 1, 'lfall'); }

@@ -1,11 +1,16 @@
 // cast.js: the two birds (小暖 and 阿蓝), their moods, and the shared props and sets of 把回忆拼好给你.
 // Shared by every chapter file; chapter files don't edit it. All pure functions of t.
 
+// Which cast plays the film: studio.html?cast=bird (default) | pig | clawd. The story, shots and timing are shared.
+const CAST = new URLSearchParams(location.search).get('cast') || 'bird';
+// a pig's front leg can't fold backward like a wing: a backward angle hangs it down in front instead
+const pigArm = a => Math.cos(a) < -.15 ? 1.3 + .08 * Math.sin(a * 3) : a;
 const COL = {
   nuan: '#F0B98D', nuanDk: '#C9825A', belly: '#FFF1DC', beak: '#E8AA38', blush: '#E27A92',
   lan: '#7E9CC4', lanDk: '#506E9A', lanBelly: '#DCE6F0', lanTuft: '#3A9C98',
   scarf: '#C9454F', scarfDk: '#8E2D3A', ribbon: '#EE9AB0',
   night: '#1F2550', indigo: '#2F3C7A', dusk: '#E59A6B', gold: '#FFD27A', glass: '#CFE4EE',
+  pig: '#F2A7B5', pigDk: '#CF7C90', pigBelly: '#FBD5DD', pigLan: '#A3B5D0', pigLanDk: '#7088AA', pigLanBelly: '#DCE4EF',
   snow: '#EEF1F6', wood: '#9A6A48', woodDk: '#6E4A33', wall: '#E9D6BC', roof: '#8E4A3C', roofDk: '#5E2F2A'
 };
 
@@ -65,19 +70,26 @@ function birdMoods(t, keys, o = {}) {
 //    blush, tear, tint + tintK, wing (near-wing angle, rad: 2.5 folded, π straight back, ≈ −2.2 raised, 0 forward),
 //    wingF (far wing angle, front view / flying), fly (legs tucked), walk (leg phase), hold(u, sw) (drawn at the
 //    near wing tip), chest(u, sw) (drawn on the body under the near wing), scarf 0..1 (wrapped around the neck), emote/emoteK/emoteAge, noShadow, tuft.
-function birdie(x, y, u, o = {}) {
+function birdBody(x, y, u, o = {}) {
   const key = o.key || 'bird', rs = p => boilSeed(`${key} ${p}`);
-  const lan = o.who === 'lan', front = o.view === 'front';
-  let col = o.col || (lan ? COL.lan : COL.nuan), dk = lan ? COL.lanDk : COL.nuanDk;
+  const lan = o.who === 'lan', front = o.view === 'front', pig = o.species === 'pig';
+  let col = o.col || (pig ? (lan ? COL.pigLan : COL.pig) : lan ? COL.lan : COL.nuan), dk = pig ? (lan ? COL.pigLanDk : COL.pigDk) : lan ? COL.lanDk : COL.nuanDk;
   if (o.tint && o.tintK) { col = mixCol(col, o.tint, o.tintK); dk = mixCol(dk, o.tint, o.tintK * .7); }
-  const belly = lan ? COL.lanBelly : COL.belly, sw = clamp(u / 15, .4, 2.4), sq = o.sq || 0;
+  const belly = pig ? (lan ? COL.pigLanBelly : COL.pigBelly) : lan ? COL.lanBelly : COL.belly, sw = clamp(u / 15, .4, 2.4), sq = o.sq || 0;
   const dy = (o.dy || 0) * u, H0 = 1.6 * u;            // legs are 1.6u long; the body sits on them
   rs('shadow');
   if (!o.noShadow) { const f = 1 - Math.min(.6, Math.abs(o.dy || 0) * .07); paint(ellPts(x, y + .1 * u, 3.6 * u * f, .7 * u * f, 18), { fill: PAL.ink, fillOp: 80, bleed: .25, tex: .3, border: .1, ink: null }); }
   push(); translate(x + (o.dx || 0) * u, y + dy); if (o.rot) rotate(o.rot); scale((o.flip ? -1 : 1) * (1 + sq * .6), 1 - sq);
   // legs
   rs('legs');
-  if (!o.fly) for (const [lx, ph] of [[-1.1, 0], [1.1, Math.PI]]) {
+  if (pig) {   // stubby trotters: tucked up when flying
+    for (const [lx, ph] of [[-2.0, 0], [-.6, Math.PI], [1.2, Math.PI], [2.4, 0]]) {
+      const w = o.walk != null ? Math.sin(o.walk * Math.PI + ph) : 0, lift = o.fly ? .9 * u : o.walk != null ? Math.max(0, w) * .5 * u : 0;
+      const fx = lx * u + w * .5 * u, far = lx === -.6 || lx === 2.4;
+      paint(ribbon([[lx * u, -H0 - .8 * u], [fx, -lift]], 1.25 * u, 1.05 * u), { wash: far ? mixCol(dk, PAL.ink, .15) : dk, ink: PAL.ink, sw: sw * .8 });
+      paint(ellPts(fx, -lift - .1 * u, .62 * u, .3 * u, 10), { wash: mixCol(dk, PAL.ink, .45), ink: null });
+    }
+  } else if (!o.fly) for (const [lx, ph] of [[-1.1, 0], [1.1, Math.PI]]) {
     const w = o.walk != null ? Math.sin(o.walk * Math.PI + ph) : 0, lift = o.walk != null ? Math.max(0, w) * .5 * u : 0;
     const fx = lx * u + w * .7 * u;
     inkLine([[lx * u * .8, -H0 - .3 * u], [fx, -lift]], sw * 1.3, COL.woodDk, 'ink', 0);
@@ -87,17 +99,30 @@ function birdie(x, y, u, o = {}) {
   // far wing (behind the body) when flying or seen from the front
   const wingAt = (a, near, px, py) => {
     rs('wing' + (near ? 'N' : 'F'));
-    const d = [Math.cos(a), Math.sin(a)], n = [-d[1], d[0]], L = 3.6 * u;
+    const d = [Math.cos(a), Math.sin(a)], n = [-d[1], d[0]], L = (pig ? 2.9 : 3.6) * u;
     const P = [[px, py], [px + d[0] * L * .45 + n[0] * .5 * u, py + d[1] * L * .45 + n[1] * .5 * u], [px + d[0] * L, py + d[1] * L]];
+    if (pig) {
+      paint(ribbon(P, 1.5 * u, 1.15 * u), { wash: near ? mixCol(col, dk, .3) : mixCol(dk, PAL.ink, .2), fill: dk, fillOp: 40, tex: .5, ink: PAL.ink, sw: sw * .85 });
+      paint(ellPts(px + d[0] * L, py + d[1] * L, .55 * u, .55 * u, 10), { wash: mixCol(dk, PAL.ink, .45), ink: PAL.ink, sw: sw * .6 });
+      return [px + d[0] * L, py + d[1] * L, a];
+    }
     paint(ribbon(P, 2.3 * u, .5 * u), { wash: near ? mixCol(col, dk, .35) : mixCol(dk, PAL.ink, .2), fill: dk, fillOp: 50, tex: .5, ink: PAL.ink, sw: sw * .85 });
     // two feather lines
     if (near && u > 8) for (const f of [.55, .8]) inkLine([[px + d[0] * L * f + n[0] * .55 * u, py + d[1] * L * f + n[1] * .55 * u], [px + d[0] * L * (f + .14), py + d[1] * L * (f + .14)]], sw * .6, PAL.ink, 'inkfine', 0);
     return [px + d[0] * L, py + d[1] * L, a];
   };
-  if (o.fly || front) wingAt(o.wingF ?? (front ? Math.PI - .6 : -2.3), false, front ? -3 * u : -.8 * u, by - .2 * u);
+  if (pig && o.fly) {   // when pigs fly: two small cream wings on the back, flapping with o.wingF
+    for (const [wx, k] of [[-1.6, .8], [-.6, 1]]) { rs('pigwing' + wx); const a = -2.75 + .55 * Math.sin(((o.wingF ?? -2.2) + 2.2) * 2.2) * k, d = [Math.cos(a), Math.sin(a)], n = [-d[1], d[0]], L = 2.6 * u, px = wx * u, py = by - 2.6 * u;
+      paint(ribbon([[px, py], [px + d[0] * L * .5 + n[0] * .4 * u, py + d[1] * L * .5 + n[1] * .4 * u], [px + d[0] * L, py + d[1] * L]], 1.6 * u, .4 * u), { wash: k < 1 ? '#E6DCCB' : PAL.cream, ink: PAL.ink, sw: sw * .7 });
+      inkLine([[px + d[0] * L * .55 + n[0] * .3 * u, py + d[1] * L * .55 + n[1] * .3 * u], [px + d[0] * L * .8, py + d[1] * L * .8]], sw * .5, PAL.ink, 'inkfine', 0); }
+  } else if (!pig && (o.fly || front)) wingAt(o.wingF ?? (front ? Math.PI - .6 : -2.3), false, front ? -3 * u : -.8 * u, by - .2 * u);
+  else if (pig && front) wingAt(Math.PI - .9, false, -3 * u, by + .3 * u);
   // tail
   rs('tail');
-  if (!front) { const ta = (o.tail || 0) + .1 * Math.sin(T * 3); push(); translate(-3.3 * u, by + .6 * u); rotate(-.5 + ta);
+  if (pig && !front) { const ta = .25 * Math.sin(T * 5); push(); translate(-3.9 * u, by + .2 * u); rotate(ta);
+    const C = []; for (let i = 0; i <= 14; i++) { const a = i / 14 * TAU * 1.25, r = (.15 + .55 * i / 14) * u; C.push([-1.0 * u * i / 14 - Math.cos(a) * r * .9 + r, -Math.sin(a) * r]); }
+    inkLine(C, sw * 1.6, mixCol(dk, PAL.ink, .2), 'ink', .5); pop(); }
+  else if (!front) { const ta = (o.tail || 0) + .1 * Math.sin(T * 3); push(); translate(-3.3 * u, by + .6 * u); rotate(-.5 + ta);
     paint(ribbon([[0, 0], [-1.4 * u, -.2 * u], [-2.6 * u, -.1 * u]], 1.8 * u, 1.2 * u), { wash: dk, fill: col, fillOp: 50, tex: .4, ink: PAL.ink, sw: sw * .85 }); pop(); }
   // body
   rs('body');
@@ -105,9 +130,18 @@ function birdie(x, y, u, o = {}) {
   rs('belly');
   paint(ellPts(front ? 0 : .9 * u, by + 1.3 * u, 2.6 * u, 2.1 * u, 22, u * .03), { wash: belly, ink: null });
   // tuft: three little feathers
+  if (pig) {
+    rs('ears');
+    for (const [ex0, far] of front ? [[-1.9, 0], [1.9, 0]] : [[-.6, 1], [1.7, 0]]) {
+      const flop = .25 * Math.sin(T * 3 + ex0) + (o.tuft || 0), bx0 = ex0 * u, by0 = by - 3.2 * u;
+      const P = [[bx0 - 1.1 * u, by0 + .6 * u], [bx0 - .5 * u, by0 - 1.1 * u], [bx0 + (.5 + flop) * u, by0 - 1.7 * u], [bx0 + (1.5 + flop) * u, by0 - 1.0 * u], [bx0 + 1.2 * u, by0 + .4 * u]];
+      paint(P, { wash: far ? mixCol(col, dk, .55) : col, ink: PAL.ink, sw: sw * .8, curv: .6 });
+      if (!far) paint([[bx0 - .5 * u, by0 + .2 * u], [bx0 - .1 * u, by0 - .8 * u], [bx0 + (.6 + flop) * u, by0 - 1.1 * u], [bx0 + .7 * u, by0 + .1 * u]], { wash: mixCol(col, COL.blush, .45), ink: null, curv: .6 });
+    }
+  }
   rs('tuft');
   const tc = lan ? COL.lanTuft : dk, tx = front ? 0 : .6 * u, ty = by - 3.5 * u, tw = .15 * Math.sin(T * 4 + (lan ? 1 : 0)) + (o.tuft || 0);
-  for (const [a, l] of [[-.5, 1.5], [-.15, 2], [.25, 1.4]]) { const aa = a + tw - Math.PI / 2; paint(ribbon([[tx, ty + .3 * u], [tx + Math.cos(aa) * l * .55 * u, ty + Math.sin(aa) * l * .55 * u], [tx + Math.cos(aa - .35) * l * u, ty + Math.sin(aa - .35) * l * u]], .55 * u, .15 * u), { wash: tc, ink: PAL.ink, sw: sw * .6 }); }
+  if (!pig || lan) for (const [a, l] of (pig ? [[-.15, 1.2], [.25, 1.0]] : [[-.5, 1.5], [-.15, 2], [.25, 1.4]])) { const aa = a + tw - Math.PI / 2; paint(ribbon([[tx, ty + .3 * u], [tx + Math.cos(aa) * l * .55 * u, ty + Math.sin(aa) * l * .55 * u], [tx + Math.cos(aa - .35) * l * u, ty + Math.sin(aa - .35) * l * u]], .55 * u, .15 * u), { wash: tc, ink: PAL.ink, sw: sw * .6 }); }
   // scarf
   if (o.scarf) {
     rs('scarf');
@@ -146,14 +180,19 @@ function birdie(x, y, u, o = {}) {
   }
   // beak
   rs('beak');
-  { const bo = clamp(o.beak || 0), bx = front ? 0 : 3.75 * u, byk = ey + .7 * u, L = front ? .9 * u : 1.6 * u;
+  if (pig) { const bo = clamp(o.beak || 0), sx0 = front ? 0 : 3.95 * u, sy0 = ey + .8 * u;
+    if (bo > .12) paint(ellPts(sx0 - (front ? 0 : .7) * u, sy0 + 1.05 * u, (.35 + .3 * bo) * u, (.18 + .5 * bo) * u, 12), { wash: mixCol(dk, PAL.ink, .5), ink: PAL.ink, sw: sw * .6 });
+    else if (o.eyes === 'happy' || o.blush > .5) inkLine([[sx0 - 1.3 * u, sy0 + .85 * u], [sx0 - .8 * u, sy0 + 1.15 * u], [sx0 - .3 * u, sy0 + .9 * u]], sw * .9, PAL.ink, 'ink', .6);
+    paint(ellPts(sx0, sy0, (front ? .95 : .85) * u, .68 * u, 16), { wash: mixCol(col, dk, .45), ink: PAL.ink, sw: sw * .85 });
+    for (const nx of front ? [-.33, .33] : [-.2, .35]) paint(ellPts(sx0 + nx * u, sy0, .14 * u, .24 * u, 8), { wash: mixCol(dk, PAL.ink, .55), ink: null });
+  } else { const bo = clamp(o.beak || 0), bx = front ? 0 : 3.75 * u, byk = ey + .7 * u, L = front ? .9 * u : 1.6 * u;
     if (front) { paint([[bx - .7 * u, byk - .2 * u], [bx + .7 * u, byk - .2 * u], [bx, byk + .6 * u + bo * .2 * u]], { wash: COL.beak, ink: PAL.ink, sw: sw * .8 }); if (bo > .2) paint([[bx - .45 * u, byk + .25 * u], [bx + .45 * u, byk + .25 * u], [bx, byk + (.6 + bo * .9) * u]], { wash: COL.nuanDk, ink: PAL.ink, sw: sw * .7 }); }
     else { paint([[bx - .2 * u, byk - .55 * u], [bx + L, byk - .05 * u - bo * .35 * u], [bx - .2 * u, byk + .2 * u]], { wash: COL.beak, ink: PAL.ink, sw: sw * .8 });
       paint([[bx - .2 * u, byk + .15 * u], [bx + L * .8, byk + .2 * u + bo * .7 * u], [bx - .2 * u, byk + .6 * u]], { wash: mixCol(COL.beak, COL.nuanDk, .4), ink: PAL.ink, sw: sw * .7 }); }
   }
   // near wing (in front of the body) and whatever it holds
   if (o.chest) o.chest(u, sw);                          // held against the body, under the near wing
-  const tip = wingAt(o.wing ?? 2.5, true, front ? 3 * u : -.3 * u, by + .3 * u);
+  const tip = wingAt(pig ? (o.fly ? 1.1 : pigArm(o.wing ?? 2.5)) : o.wing ?? 2.5, true, front ? 3 * u : (pig ? .6 : -.3) * u, by + (pig ? .9 : .3) * u);
   if (front) { /* the front view's second wing is the "far" one drawn first, mirrored */ }
   if (o.hold) { push(); translate(tip[0], tip[1]); o.hold(u, sw, tip[2]); pop(); }
   if (o.over) o.over(u, sw);
@@ -391,11 +430,66 @@ function birdPt(x, y, u, o, lx, ly) {
   return [x + (o.dx || 0) * u + px * c - py * s, y + (o.dy || 0) * u + px * s + py * c];
 }
 function birdTip(x, y, u, o) {
-  const a = o.wing ?? 2.5, front = o.view === 'front', px = front ? 3 * u : -.3 * u, py = -1.6 * u - 3.5 * u + .3 * u;
-  return birdPt(x, y, u, o, px + Math.cos(a) * 3.6 * u, py + Math.sin(a) * 3.6 * u);
+  if (CAST === 'clawd') { const { aR } = clawdArms(o), rx = (5 + .55 * clamp((Math.abs(aR) - .7) / .9)) * u;
+    return birdPt(x, y, u, o, rx + Math.cos(aR) * 2.2 * u, -4.5 * u - Math.sin(aR) * 2.2 * u); }
+  const pig = CAST === 'pig', a = pig ? (o.fly ? 1.1 : pigArm(o.wing ?? 2.5)) : o.wing ?? 2.5, front = o.view === 'front', L = (pig ? 2.9 : 3.6) * u;
+  const px = front ? 3 * u : (pig ? .6 : -.3) * u, py = -1.6 * u - 3.5 * u + (pig ? .9 : .3) * u;
+  return birdPt(x, y, u, o, px + Math.cos(a) * L, py + Math.sin(a) * L);
 }
-const birdBeak = (x, y, u, o) => birdPt(x, y, u, o, 5.2 * u, -5.4 * u);
+const birdBeak = (x, y, u, o) => CAST === 'clawd' ? birdPt(x, y, u, o, 5.2 * u, -4.6 * u) : CAST === 'pig' ? birdPt(x, y, u, o, 4.8 * u, -5.4 * u) : birdPt(x, y, u, o, 5.2 * u, -5.4 * u);
 const birdHead = (x, y, u, o) => birdPt(x, y, u, o, 1 * u, -6.2 * u);
+// where a held heart sits against the body, and how big it is (in u): [x, y, r]
+const CHEST = { bird: [2.0, -4.6, 2.2], pig: [2.1, -4.3, 2.1], clawd: [3.2, -3.4, 1.6] }[CAST] || [2.0, -4.6, 2.2];
+const chestAt = u => [CHEST[0] * u, CHEST[1] * u], chestR = u => CHEST[2] * u;
+
+// ---------- the actor: whichever cast plays the film ----------
+// Every shot calls birdie(); it hands the same pose and mood to the bird, the pig, or Clawd.
+function birdie(x, y, u, o = {}) {
+  if (CAST === 'clawd') return clawdActor(x, y, u, o);
+  return birdBody(x, y, u, { ...o, species: CAST === 'pig' ? 'pig' : 'bird' });
+}
+// Clawd's arms from the bird's wing angle: forward and raised wings become the front arm (aR in the 3/4 view);
+// a folded wing rests the arm down; a flapping wing (flying) waves both arms.
+function clawdArms(o) {
+  const a = o.wing ?? 2.5, nm = v => Math.atan2(Math.sin(v), Math.cos(v)), idle = .08 * Math.sin(bpOf(T) * Math.PI);
+  if (o.fly) { const f = nm(a - Math.PI); return { a, aR: .9 * f, aL: .7 * f + .1 }; }
+  if (Math.cos(a) > -.15) return { a, aR: clamp(-nm(a), -1.5, 1.6), aL: .15 + idle };
+  return { a, aR: -1.1 + idle, aL: .15 - idle };
+}
+const CLAWD_EYES = { dot: 'normal', wide: 'wide', happy: 'happy', closed: 'closed', sad: 'sad', cry: 'cry', sleepy: 'sleepy' };
+function clawdActor(x, y, u, o) {
+  const lan = o.who === 'lan', { a, aR, aL } = clawdArms(o);
+  let eyes = CLAWD_EYES[o.eyes] || 'normal';
+  if (o.tear > .3 && eyes === 'happy') eyes = 'teary';
+  const bo = o.beak || 0;
+  const mouth = bo > .6 ? 'O' : bo > .3 ? 'open' : bo > .12 ? (o.eyes === 'happy' ? 'grin' : 'o') : (o.eyes === 'happy' && o.blush > .3) ? 'smile' : (o.eyes === 'sad' || o.eyes === 'cry') ? 'wobble' : null;
+  // flying: two little paper wings on the back, flapping with the arms
+  if (o.fly) {
+    const f = Math.sin(T * 10 + (lan ? 1 : 0));
+    push(); translate(x + (o.dx || 0) * u, y + (o.dy || 0) * u); if (o.flip) scale(-1, 1);
+    for (const [wx, k] of [[-2.6, .8], [-.6, 1]]) { boilSeed(`${o.key} cwing ${wx}`); const wa = -2.75 + .55 * f * k, d = [Math.cos(wa), Math.sin(wa)], n = [-d[1], d[0]], L = 3.4 * u, px = wx * u, py = -7.4 * u;
+      paint(ribbon([[px, py], [px + d[0] * L * .5 + n[0] * .4 * u, py + d[1] * L * .5 + n[1] * .4 * u], [px + d[0] * L, py + d[1] * L]], 1.8 * u, .4 * u), { wash: k < 1 ? '#E6DCCB' : PAL.cream, ink: PAL.ink, sw: clamp(u / 15, .45, 2.4) * .7 }); }
+    pop();
+  }
+  const sw0 = clamp(u / 15, .45, 2.4);
+  const draw = (uu, sw) => {
+    if (o.scarf) { boilSeed(`${o.key} cscarf`); const sway = .2 * Math.sin(T * 3);
+      paint(ribbon([[-5.2 * uu, -3.5 * uu], [0, -3.2 * uu], [5.3 * uu, -3.6 * uu]], 1.1 * uu, 1.1 * uu), { wash: COL.scarf, fill: COL.scarfDk, fillOp: 50, tex: .5, ink: PAL.ink, sw: sw * .8 });
+      paint(ribbon([[-4.2 * uu, -3.3 * uu], [-4.8 * uu + sway * uu, -1.6 * uu], [-4.6 * uu + sway * 2 * uu, -.4 * uu]], 1 * uu, .85 * uu), { wash: COL.scarf, ink: PAL.ink, sw: sw * .8 }); }
+    if (o.chest) o.chest(uu, sw);
+    if (o.tear > .05 && eyes !== 'cry') { boilSeed(`${o.key} ctear`); const k = clamp(o.tear);
+      for (let j = 0; j < 2; j++) { const ph = frac(T * 1.4 + j * .5), cx = 3.7 * uu, ty2 = -5.2 * uu + ph * 2.4 * uu, r = .4 * uu * k * (1 - ph * .4);
+        paint([[cx, ty2 - r * 1.6], [cx + r, ty2 + r * .3], [cx, ty2 + r], [cx - r, ty2 + r * .3]], { wash: '#A9CBEA', washOp: 230, ink: PAL.ink, sw: sw * .5, curv: .7 }); } }
+  };
+  clawd(x, y, u, {
+    boilKey: o.key, view: o.view === 'front' ? 'front' : 'q', flip: o.flip, dx: o.dx, dy: o.dy, sq: o.sq, rot: o.rot,
+    walk: o.walk != null ? o.walk * .5 : null, noLegs: false, noShadow: o.noShadow || o.fly,
+    eyes, mouth, lookX: o.lookX, lookY: o.lookY, squint: o.squint, blush: o.blush, seed: lan ? 3 : 1,
+    ...(lan ? { col: '#7E9CC4', dk: '#506E9A', lt: '#A9C1E0' } : {}), tint: o.tint, tintK: o.tintK,
+    aR, aL, emote: o.emote, emoteK: o.emoteK, emoteAge: o.emoteAge, draw,
+    armR: o.hold ? (uu, sw) => { push(); rotate(aR + a); o.hold(uu, sw, a); pop(); } : null
+  });
+}
 
 // ---------- more props ----------
 // the glowing heart the pieces become: centre (x, y), size r, k 0..1 brightness
