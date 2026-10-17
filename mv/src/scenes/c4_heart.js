@@ -78,7 +78,7 @@
   }
   function shotK(t, lt, dur) {
     const m = birdMoods(lt, [[0, 'calm', { lookX: .5, lookY: -.5 }], [2.4, 'hopeful', { lookY: -.6 }]]);
-    const o = { key: 'nuanK', ...m, wing: 1.3, noShadow: true };
+    const o = { key: 'nuanK', ...m, wing: 1.3, noShadow: true, sit: true };
     const heartW = birdPt(NXK, SILL, UK, o, ...chestK(UK));
     const back = ease(seg(lt, 0, 1.0)), dive = easeIn(seg(lt, dur - .35, dur));
     const zoom = lt < 1 ? lerp(2.6, 1.0, back) : lerp(1.0 + .03 * (lt - 1), 2.6, dive);
@@ -101,9 +101,9 @@
     if (lt > 1.6) wing = lerp(1.3, -1.45, ease(seg(lt, 1.6, 2.2)));
     if (lt > 2.3) wing = lerp(-1.45, 2.5, ease(seg(lt, 2.3, 2.7)));
     if (lt > 4.8) wing = lerp(2.5, .35, ease(seg(lt, 4.8, 5.1)));
-    return { key: 'nuanL', ...m, wing, scarf: 1 };
+    return { key: 'nuanL', ...m, wing, scarf: 1, sit: true };
   }
-  const TIPL = birdTip(NX, RY, U, { wing: .35 });
+  const TIPL = birdTip(NX, RY, U, { wing: .35, sit: true });
   function shotL(t, lt, dur) {
     const o = nuanL(lt);
     const chestW = birdPt(NX, RY, U, o, ...chestL(U)), back = ease(seg(lt, 0, 1.4)), up = ease(seg(lt, 2.2, 3.2)) * (1 - ease(seg(lt, 4.2, 5.2)));

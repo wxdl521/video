@@ -1,11 +1,15 @@
 // cast.js: the two birds (小暖 and 阿蓝), their moods, and the shared props and sets of 把回忆拼好给你.
 // Shared by every chapter file; chapter files don't edit it. All pure functions of t.
 
-// Which cast plays the film: studio.html?cast=bird (default) | pig | claude. The story, shots and timing are shared.
+// Which cast plays the film: studio.html?cast=bird (default) | pig | claude | human. The story, shots and timing are shared.
+// 'human' is an original chibi girl (小暖) and boy (阿蓝); shots pass sit: true where a person would sit.
 // 'claude' is an original design in Claude's warm terracotta: a round little sprite with a spark on its antenna.
 const CAST = new URLSearchParams(location.search).get('cast') || 'bird';
 // a pig's front leg can't fold backward like a wing: a backward angle hangs it down in front instead
 const pigArm = a => Math.cos(a) < -.15 ? 1.0 + .08 * Math.sin(a * 3) : a;
+// a person's arm: a backward (folded or flapping) wing angle lets it hang at the side
+const humanArm = (a, fly) => fly ? 1.9 : Math.cos(a) < -.15 ? 1.42 + .05 * Math.sin(a * 3) : a;
+const SIT = 1.8;   // how far a sitting person's upper body drops (u)
 const COL = {
   nuan: '#F0B98D', nuanDk: '#C9825A', belly: '#FFF1DC', beak: '#E8AA38', blush: '#E27A92',
   lan: '#7E9CC4', lanDk: '#506E9A', lanBelly: '#DCE6F0', lanTuft: '#3A9C98',
@@ -213,6 +217,113 @@ function birdBody(x, y, u, o = {}) {
   if (o.over) o.over(u, sw);
   pop();
   if (o.emote && (o.emoteK ?? 1) > .02) { rs('emote'); emote(o.emote, x + (o.flip ? -3.5 : 3.5) * u + (o.dx || 0) * u, y + dy - 11.5 * u, u * .5, o.emoteK ?? 1, o.emoteAge ?? T); }
+  boilSeed(key + ' done');
+}
+
+// ---------- the people (cast=human) ----------
+// humanBody(x, y, u, o): the same options as birdBody, plus sit (sitting on whatever is at y, legs dangling in front).
+// A chibi person about 10.5u tall: big head, small body; 3/4 view facing right, flip faces left.
+function humanBody(x, y, u, o = {}) {
+  const key = o.key || 'person', rs = p => boilSeed(`${key} ${p}`), boy = o.who === 'lan', front = o.view === 'front';
+  const tk = o.tint && o.tintK ? o.tintK : 0;
+  const skin = mixCol(boy ? '#F0C9A8' : '#F6D3B8', o.tint || '#F6D3B8', tk * .45), hair = boy ? '#2E2A33' : '#4A3328';
+  const top = mixCol(boy ? COL.lan : '#E7896A', o.tint || '#E7896A', tk), topDk = mixCol(boy ? COL.lanDk : '#B85E44', o.tint || '#B85E44', tk * .7);
+  const legC = boy ? '#3B4566' : skin, shoe = boy ? '#2E2A33' : '#7A3E33', skinDk = mixCol(skin, '#B97F62', .45);
+  const sw = clamp(u / 15, .4, 2.4), sq = o.sq || 0, dy = (o.dy || 0) * u, S = o.sit ? SIT * u : 0;
+  rs('shadow');
+  if (!o.noShadow && !o.sit) { const f = 1 - Math.min(.6, Math.abs(o.dy || 0) * .07); paint(ellPts(x, y + .1 * u, 2.6 * u * f, .6 * u * f, 18), { fill: PAL.ink, fillOp: 80, bleed: .25, tex: .3, border: .1, ink: null }); }
+  push(); translate(x + (o.dx || 0) * u, y + dy); if (o.rot) rotate(o.rot); scale((o.flip ? -1 : 1) * (1 + sq * .6), 1 - sq);
+  const hx = .35 * u, hy = -7.7 * u + S;                 // head centre
+  // little wings on the back when flying
+  if (o.fly) for (const [wx, k] of [[-1.3, .8], [-.6, 1]]) { rs('hwing' + wx); const a = -2.75 + .55 * Math.sin(((o.wingF ?? -2.2) + 2.2) * 2.2) * k, d = [Math.cos(a), Math.sin(a)], n = [-d[1], d[0]], L = 2.8 * u, px = wx * u, py = -5.0 * u + S;
+    paint(ribbon([[px, py], [px + d[0] * L * .5 + n[0] * .4 * u, py + d[1] * L * .5 + n[1] * .4 * u], [px + d[0] * L, py + d[1] * L]], 1.6 * u, .4 * u), { wash: k < 1 ? '#E6DCCB' : PAL.cream, ink: PAL.ink, sw: sw * .7 }); }
+  // her long hair falls behind the shoulders
+  if (!boy) { rs('backhair'); paint(ribbon([[hx - .4 * u, hy - 1.2 * u], [hx - 1.6 * u, hy + 1.2 * u], [hx - 1.5 * u + .15 * u * Math.sin(T * 2), hy + 3.4 * u]], 3.4 * u, 2.0 * u), { wash: hair, ink: PAL.ink, sw: sw * .8 }); }
+  // legs
+  rs('legs');
+  for (const [lx, ph, far] of [[-.55, 0, 1], [.75, Math.PI, 0]]) {
+    const c = far ? mixCol(legC, PAL.ink, .15) : legC, hip = [lx * u, -2.0 * u + S];
+    let knee, foot;
+    if (o.sit) { knee = [lx * u + 1.9 * u, -.35 * u]; foot = [lx * u + 2.1 * u + .15 * u * Math.sin(T * 2 + ph), 1.7 * u]; }
+    else if (o.fly) { knee = [lx * u - .3 * u, -1.0 * u]; foot = [lx * u - 1.0 * u + .2 * u * Math.sin(T * 6 + ph), -.1 * u]; }
+    else { const w = o.walk != null ? Math.sin(o.walk * Math.PI + ph) : 0, lift = o.walk != null ? Math.max(0, w) * .5 * u : 0;
+      foot = [lx * u + w * .7 * u, -lift]; knee = [lerp(hip[0], foot[0], .5) + .1 * u, -1.0 * u - lift * .5]; }
+    paint(ribbon([hip, knee, foot], .95 * u, .8 * u), { wash: c, ink: PAL.ink, sw: sw * .8 });
+    paint(ellPts(foot[0] + .35 * u, foot[1] - .1 * u, .7 * u, .35 * u, 12), { wash: far ? mixCol(shoe, PAL.ink, .2) : shoe, ink: PAL.ink, sw: sw * .7 });
+  }
+  // far arm, behind the body
+  const armAt = (a, near, px, py) => {
+    rs('arm' + (near ? 'N' : 'F'));
+    const d = [Math.cos(a), Math.sin(a)], n = [-d[1], d[0]], L = 2.6 * u, el = [px + d[0] * L * .5 + n[0] * .2 * u, py + d[1] * L * .5 + n[1] * .2 * u], tp = [px + d[0] * L, py + d[1] * L];
+    paint(ribbon([[px, py], el, tp], .95 * u, .75 * u), { wash: near ? skin : skinDk, ink: PAL.ink, sw: sw * .75 });
+    paint(ribbon([[px - d[0] * .2 * u, py - d[1] * .2 * u], [px + d[0] * L * .42, py + d[1] * L * .42]], 1.25 * u, 1.05 * u), { wash: near ? top : topDk, ink: PAL.ink, sw: sw * .75 });
+    paint(ellPts(tp[0], tp[1], .45 * u, .45 * u, 10), { wash: near ? skin : skinDk, ink: PAL.ink, sw: sw * .6 });
+    return [tp[0], tp[1], a];
+  };
+  armAt(o.fly ? 2.1 : 1.6 + .06 * Math.sin(bpOf(T) * Math.PI), false, -.6 * u, -4.9 * u + S);
+  // body: her dress, his shirt and trousers
+  rs('body');
+  if (boy) {
+    paint([[-1.5 * u, -2.5 * u + S], [1.9 * u, -2.5 * u + S], [1.9 * u, -1.8 * u + S], [-1.5 * u, -1.8 * u + S]], { wash: legC, ink: PAL.ink, sw: sw * .8 });
+    paint([[-1.4 * u, -5.4 * u + S], [1.7 * u, -5.4 * u + S], [1.95 * u, -2.4 * u + S], [-1.55 * u, -2.4 * u + S]], { wash: top, fill: topDk, fillOp: 35, tex: .5, ink: PAL.ink, sw, curv: .15 });
+    inkLine([[.25 * u, -5.3 * u + S], [.3 * u, -2.6 * u + S]], sw * .5, topDk, 'inkfine', 0);
+  } else {
+    paint([[-1.3 * u, -5.4 * u + S], [1.6 * u, -5.4 * u + S], [2.7 * u, -1.8 * u + S], [-2.3 * u, -1.8 * u + S]], { wash: top, fill: topDk, fillOp: 35, tex: .5, ink: PAL.ink, sw, curv: .2 });
+    inkLine([[-2.2 * u, -2.1 * u + S], [-.6 * u, -1.85 * u + S], [1.2 * u, -2.0 * u + S], [2.6 * u, -1.9 * u + S]], sw * .5, topDk, 'inkfine', .5);
+  }
+  paint([[-.9 * u, -5.5 * u + S], [.4 * u, -5.0 * u + S], [1.4 * u, -5.5 * u + S], [.4 * u, -5.2 * u + S]], { wash: PAL.cream, ink: PAL.ink, sw: sw * .6 });   // collar
+  // head
+  rs('head');
+  paint(ellPts(hx - 1.55 * u, hy + .25 * u, .45 * u, .6 * u, 10), { wash: skin, ink: PAL.ink, sw: sw * .7 });     // ear
+  paint(ellPts(hx, hy, 2.5 * u, 2.4 * u, 28, u * .03), { wash: skin, ink: PAL.ink, sw });
+  // hair: a cap over the top of the head with a fringe
+  rs('hair');
+  { const cap = []; for (let i = 0; i <= 12; i++) { const a = Math.PI * (1.0 + i / 12); cap.push([hx + Math.cos(a) * 2.65 * u, hy + Math.sin(a) * 2.6 * u]); }
+    const fr = boy ? [[2.75, -.2], [2.1, -.95], [1.6, -.45], [.9, -1.05], [.3, -.5], [-.4, -1.0], [-1.3, -.3], [-2.2, .6]]
+                   : [[2.75, .3], [2.2, -.7], [1.55, -.15], [.95, -.85], [.3, -.2], [-.35, -.8], [-1.2, -.1], [-2.0, 1.0], [-2.5, 2.4]];
+    paint(cap.concat(fr.map(([fx, fy]) => [hx + fx * u, hy + fy * u])), { wash: hair, ink: PAL.ink, sw: sw * .9, curv: .35 });
+    if (boy) paint(ribbon([[hx + .2 * u, hy - 2.5 * u], [hx + .7 * u, hy - 3.3 * u], [hx + 1.3 * u + .1 * u * Math.sin(T * 4), hy - 3.2 * u]], .55 * u, .15 * u), { wash: hair, ink: PAL.ink, sw: sw * .6 });
+    else paint(ellPts(hx + 1.6 * u, hy - 1.9 * u, .45 * u, .3 * u, 10, 0, -.4), { wash: COL.ribbon, ink: PAL.ink, sw: sw * .6 });   // hair clip
+  }
+  // face
+  const ex = front ? [-.75, .75] : [.0, 1.45], ey = hy + .45 * u, lx = (o.lookX || 0) * .22 * u, ly = (o.lookY || 0) * .22 * u, es = .72;
+  rs('blush');
+  if (o.blush > .05) for (const cx of front ? [-1.4, 1.4] : [-.35, 1.95]) paint(ellPts(hx + cx * u, ey + .95 * u, .55 * u, .3 * u, 12), { wash: COL.blush, washOp: 150 * clamp(o.blush), ink: null });
+  rs('eyes');
+  let eyes = o.eyes || 'dot';
+  if (o.squint > .5) eyes = 'closed';
+  if (!o.noBlink && eyes !== 'closed' && eyes !== 'happy' && eyes !== 'cry' && frac(T / 3.3 + hash(key.length * 7.3)) < .035) eyes = 'closed';
+  ex.forEach((e, i) => {
+    const s = (front ? 1 : (i ? 1 : .85)) * es, cx = hx + e * u + lx, cy = ey + ly;
+    if (eyes === 'happy') inkLine([[cx - .65 * u * s, cy + .25 * u * s], [cx, cy - .45 * u * s], [cx + .65 * u * s, cy + .25 * u * s]], sw * 1.2, PAL.ink, 'ink', .6);
+    else if (eyes === 'closed' || eyes === 'cry') inkLine([[cx - .65 * u * s, cy - .1 * u * s], [cx, cy + .4 * u * s], [cx + .65 * u * s, cy - .1 * u * s]], sw * 1.1, PAL.ink, 'ink', .6);
+    else {
+      const r = (eyes === 'wide' ? .78 : .62) * u * s, ry = eyes === 'sleepy' ? r * .55 : r * 1.2;
+      paint(ellPts(cx, cy + (eyes === 'sleepy' ? .2 * u : 0), r, ry, 14), { wash: PAL.ink, ink: null });
+      paint(ellPts(cx + .18 * u * s, cy - .3 * u * s, r * .34, r * .34, 8), { wash: PAL.cream, ink: null });
+      if (eyes === 'sleepy') inkLine([[cx - r * 1.2, cy - .05 * u], [cx + r * 1.2, cy - .05 * u]], sw * 1.1, PAL.ink, 'ink', 0);
+      if (eyes === 'sad') inkLine(i === 0 ? [[cx - .6 * u, cy - .6 * u], [cx + .45 * u, cy - .95 * u]] : [[cx - .45 * u, cy - .95 * u], [cx + .6 * u, cy - .6 * u]], sw * 1.0, hair, 'ink', 0);
+    }
+  });
+  if (o.tear > .05) { rs('tear'); const k = clamp(o.tear), cx = hx + ex[1] * u + .15 * u;
+    for (let j = 0; j < 2; j++) { const ph = frac(T * 1.4 + j * .5), ty2 = ey + .5 * u + ph * 2.0 * u, r = .34 * u * k * (1 - ph * .4);
+      paint([[cx + j * .25 * u, ty2 - r * 1.6], [cx + j * .25 * u + r, ty2 + r * .3], [cx + j * .25 * u, ty2 + r], [cx + j * .25 * u - r, ty2 + r * .3]], { wash: '#A9CBEA', washOp: 230, ink: PAL.ink, sw: sw * .45, curv: .7 }); } }
+  rs('mouth');
+  { const bo = clamp(o.beak || 0), mx = hx + (front ? 0 : .85) * u, my = ey + 1.35 * u;
+    if (bo > .12) paint(ellPts(mx, my, (.22 + .25 * bo) * u, (.12 + .38 * bo) * u, 12), { wash: '#B5525C', ink: PAL.ink, sw: sw * .55 });
+    else if (o.eyes === 'happy' || o.blush > .5) inkLine([[mx - .4 * u, my - .08 * u], [mx, my + .22 * u], [mx + .4 * u, my - .08 * u]], sw * .8, PAL.ink, 'ink', .6);
+    else if (o.eyes === 'sad' || o.eyes === 'cry') inkLine([[mx - .32 * u, my + .12 * u], [mx, my - .06 * u], [mx + .32 * u, my + .12 * u]], sw * .75, PAL.ink, 'ink', .6);
+    else inkLine([[mx - .25 * u, my + .02 * u], [mx + .25 * u, my + .02 * u]], sw * .7, PAL.ink, 'ink', 0); }
+  // scarf
+  if (o.scarf) { rs('scarf'); const k = clamp(o.scarf), sy = -5.35 * u + S, sway = .2 * Math.sin(T * 3);
+    paint(ribbon([[-1.4 * u, sy - .1 * u], [.2 * u, sy + .35 * u], [lerp(-1.4, 1.9, k) * u, sy - .15 * u]], .95 * u, .95 * u), { wash: COL.scarf, fill: COL.scarfDk, fillOp: 50, tex: .5, ink: PAL.ink, sw: sw * .8 });
+    if (k > .8) paint(ribbon([[-.9 * u, sy + .1 * u], [-1.4 * u + sway * u, sy + 1.6 * u], [-1.2 * u + sway * 2 * u, sy + 2.8 * u]], .85 * u, .7 * u), { wash: COL.scarf, ink: PAL.ink, sw: sw * .8 }); }
+  // near arm in front, holding whatever it holds
+  if (o.chest) { push(); translate(0, S); o.chest(u, sw); pop(); }
+  const tip = armAt(humanArm(o.wing ?? 2.5, o.fly), true, .55 * u, -4.9 * u + S);
+  if (o.hold) { push(); translate(tip[0], tip[1]); o.hold(u, sw, tip[2]); pop(); }
+  pop();
+  if (o.emote && (o.emoteK ?? 1) > .02) { rs('emote'); emote(o.emote, x + (o.flip ? -3.0 : 3.0) * u + (o.dx || 0) * u, y + dy - 11.2 * u + S, u * .5, o.emoteK ?? 1, o.emoteAge ?? T); }
   boilSeed(key + ' done');
 }
 
@@ -440,24 +551,27 @@ flushBrush = () => { _flushBrush(); BRUSH_DIRTY = false; };
 
 // ---------- where things are on a bird (world coordinates, for props that leave or reach a wing or the beak) ----------
 function birdPt(x, y, u, o, lx, ly) {
+  if (CAST === 'human' && o.sit) ly += SIT * u;
   const sq = o.sq || 0, sx = (o.flip ? -1 : 1) * (1 + sq * .6), sy = 1 - sq, r = o.rot || 0;
   const px = lx * sx, py = ly * sy, c = Math.cos(r), s = Math.sin(r);
   return [x + (o.dx || 0) * u + px * c - py * s, y + (o.dy || 0) * u + px * s + py * c];
 }
 function birdTip(x, y, u, o) {
+  if (CAST === 'human') { const a = humanArm(o.wing ?? 2.5, o.fly); return birdPt(x, y, u, o, .55 * u + Math.cos(a) * 2.6 * u, -4.9 * u + Math.sin(a) * 2.6 * u); }
   const stub = CAST === 'pig' || CAST === 'claude', a = stub ? (o.fly ? 1.1 : pigArm(o.wing ?? 2.5)) : o.wing ?? 2.5, front = o.view === 'front', L = (stub ? 2.4 : 3.6) * u;
   const px = front ? 3 * u : (stub ? .6 : -.3) * u, py = -1.6 * u - 3.5 * u + (stub ? .9 : .3) * u;
   return birdPt(x, y, u, o, px + Math.cos(a) * L, py + Math.sin(a) * L);
 }
-const birdBeak = (x, y, u, o) => CAST === 'claude' ? birdPt(x, y, u, o, 3.6 * u, -5.0 * u) : CAST === 'pig' ? birdPt(x, y, u, o, 4.8 * u, -5.4 * u) : birdPt(x, y, u, o, 5.2 * u, -5.4 * u);
+const birdBeak = (x, y, u, o) => CAST === 'human' ? birdPt(x, y, u, o, 1.4 * u, -6.2 * u) : CAST === 'claude' ? birdPt(x, y, u, o, 3.6 * u, -5.0 * u) : CAST === 'pig' ? birdPt(x, y, u, o, 4.8 * u, -5.4 * u) : birdPt(x, y, u, o, 5.2 * u, -5.4 * u);
 const birdHead = (x, y, u, o) => birdPt(x, y, u, o, 1 * u, -6.2 * u);
 // where a held heart sits against the body, and how big it is (in u): [x, y, r]
-const CHEST = { bird: [2.0, -4.6, 2.2], pig: [2.1, -4.3, 2.1], claude: [2.1, -4.3, 2.1] }[CAST] || [2.0, -4.6, 2.2];
+const CHEST = { bird: [2.0, -4.6, 2.2], pig: [2.1, -4.3, 2.1], claude: [2.1, -4.3, 2.1], human: [1.4, -4.1, 1.6] }[CAST] || [2.0, -4.6, 2.2];
 const chestAt = u => [CHEST[0] * u, CHEST[1] * u], chestR = u => CHEST[2] * u;
 
 // ---------- the actor: whichever cast plays the film ----------
 // Every shot calls birdie(); it hands the same pose and mood to the bird, the pig or the sprite.
 function birdie(x, y, u, o = {}) {
+  if (CAST === 'human') return humanBody(x, y, u, o);
   return birdBody(x, y, u, { ...o, species: CAST === 'pig' || CAST === 'claude' ? CAST : 'bird' });
 }
 

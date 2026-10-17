@@ -113,7 +113,7 @@
     paint(rectPts(3050, 300, 900, 1300), { ink: PAL.ink, sw: 1.2 });
     glow(3500, 600, 260, '#F0C27A', .35);
     paint(ellPts(3500, 700, 150, 40, 20), { wash: COL.woodDk, ink: PAL.ink, sw: 1 });
-    birdie(3500, 700, 20, { key: 'lanE', who: 'lan', flip: true, ...birdMood('sleep', t), emoteK: 1, emoteAge: t, noShadow: true, noBlink: true });
+    birdie(3500, 700, 20, { key: 'lanE', who: 'lan', flip: true, sit: true, ...birdMood('sleep', t), emoteK: 1, emoteAge: t, noShadow: true, noBlink: true });
     boilSeed('e his frame');
     paint(rectPts(3230, 380, 540, 360), { ink: COL.woodDk, sw: 2 }); inkLine([[3500, 380], [3500, 560]], 3, COL.woodDk, 'ink', 0);
     paint(rectPts(3170, 740, 660, 30), { wash: COL.wood, ink: PAL.ink, sw: 1 });
@@ -169,16 +169,16 @@
     const m = birdMoods(lt, [[0, 'happy', { emote: 'hearts', lookX: .3, lookY: .6 }], [1.45, 'calm', { lookY: .6 }], [1.75, 'shiver', { lookY: .5 }], [3.15, 'wow', { beak: 1 }], [3.75, 'sad', { lookX: .8, lookY: .7 }]]);
     const sneeze = take(lt, 3.3, 1.3);
     const wing = knit ? .35 + .22 * Math.sin(lt * 15) : lerp(.35, 1.0, ease(seg(lt, 3.2, 3.5)));
-    birdie(CHX, SEAT, UF, { key: 'nuanF', ...m, sq: (m.sq || 0) + sneeze.sq, dy: (m.dy || 0) + sneeze.dy, wing, noShadow: true, scarf: 0,
+    birdie(CHX, SEAT, UF, { key: 'nuanF', sit: true, ...m, sq: (m.sq || 0) + sneeze.sq, dy: (m.dy || 0) + sneeze.dy, wing, noShadow: true, scarf: 0,
       hold: (u, sw) => {
         // two needles and the first stretch of scarf hanging from them, running to the seat
         boilSeed('needles');
         inkLine([[-1.4 * u, -1.2 * u], [1.6 * u, .9 * u]], sw * 1.1, '#D9C9A8', 'ink', 0);
         inkLine([[-1.2 * u, .8 * u], [1.5 * u, -1.0 * u]], sw * 1.1, '#D9C9A8', 'ink', 0);
       } });
-    const tipF = birdTip(CHX, SEAT, UF, { wing });
+    const tipF = birdTip(CHX, SEAT, UF, { wing, sit: true });
     // the sneeze: a puff off her beak
-    if (lt > 3.3 && lt < 3.9) { const q = seg(lt, 3.3, 3.9), bk = birdBeak(CHX, SEAT, UF, {}); boilSeed('sneeze'); for (let i = 0; i < 4; i++) paint(ellPts(bk[0] + 40 + q * 160 + i * 30, bk[1] - 10 + (i - 1.5) * 26 * q, 22 * (1 - q) + 4, 18 * (1 - q) + 4, 10), { wash: PAL.cream, washOp: 220 * (1 - q), ink: q < .5 ? PAL.ink : null, sw: .6 }); }
+    if (lt > 3.3 && lt < 3.9) { const q = seg(lt, 3.3, 3.9), bk = birdBeak(CHX, SEAT, UF, { sit: true }); boilSeed('sneeze'); for (let i = 0; i < 4; i++) paint(ellPts(bk[0] + 40 + q * 160 + i * 30, bk[1] - 10 + (i - 1.5) * 26 * q, 22 * (1 - q) + 4, 18 * (1 - q) + 4, 10), { wash: PAL.cream, washOp: 220 * (1 - q), ink: q < .5 ? PAL.ink : null, sw: .6 }); }
     // armchair arms and cushion, in front of her
     boilSeed('f chair front');
     paint(rrPts(CHX - 250, SEAT - 10, 500, 200, 40), { wash: '#7F98BA', ink: PAL.ink, sw: 1.3 });

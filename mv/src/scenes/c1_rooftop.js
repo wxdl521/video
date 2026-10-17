@@ -8,9 +8,9 @@
     const m = birdMoods(lt, [[0, 'calm', { lookX: .6 }], [1.75, 'love', { lookX: .6 }], [3.22, 'wow', { lookX: .4, lookY: -1 }],
       [3.9, 'look', { lookX: .5, lookY: -1 }], [4.55, 'look', { lookX: .7, lookY: .1 }], [5.22, 'happy', { lookX: .5, lookY: .4 }]]);
     const reach = ease(seg(lt, 4.8, 5.15));
-    return { key: 'nuan', ...m, wing: lerp(m.wing ?? 2.5, .35, reach) };
+    return { key: 'nuan', ...m, wing: lerp(m.wing ?? 2.5, .35, reach), sit: true };
   };
-  const TIP = birdTip(NX, RY, U, { wing: .35 });          // where the spark lands
+  const TIP = birdTip(NX, RY, U, { wing: .35, sit: true });          // where the spark lands
 
   // ---------- A · 0–5.6 · rooftop: Lan sings to her, a firework, a spark falls into her wing ----------
   function shotA(t, lt, dur) {
@@ -27,7 +27,7 @@
     // Lan: sings to her, leaning in, then looks up at the burst
     const lm = birdMoods(lt, [[0, 'calm', { lookX: .4 }], [1.12, 'chirp'], [2.95, 'happy'], [3.24, 'wow', { lookY: -1 }], [3.95, 'happy', { lookY: -1 }]]);
     const lean = ease(seg(lt, 1.0, 1.35)) * (1 - ease(seg(lt, 2.85, 3.2)));
-    birdie(LX, RY - 4, U, { key: 'lan', who: 'lan', flip: true, ...lm, dx: (lm.dx || 0) - .55 * lean, rot: (lm.rot || 0) - .1 * lean });
+    birdie(LX, RY - 4, U, { key: 'lan', who: 'lan', flip: true, sit: true, ...lm, dx: (lm.dx || 0) - .55 * lean, rot: (lm.rot || 0) - .1 * lean });
     // the spark: drifts down from the fading burst (4.35) into her raised wing (5.2), then she holds it
     const n = nuanA(lt), held = lt >= 5.2;
     birdie(NX, RY, U, { ...n, hold: held ? (u, sw) => memBit(0, 0, u * .7, 1, 'aheld') : null });
@@ -46,7 +46,7 @@
   function shotB(t, lt, dur) {
     const m = birdMoods(lt, [[0, 'happy', { lookX: .4, lookY: .5 }], [1.8, 'dreamy'], [3.3, 'look', { lookX: 1 }], [3.95, 'sad', { lookX: 1, lookY: .3 }]]);
     const lean = ease(seg(lt, 1.8, 2.6)) * (1 - backOut(seg(lt, 3.25, 3.6)));
-    const o = { key: 'nuanB', ...m, rot: (m.rot || 0) + .13 * lean, wing: .35 + .08 * Math.sin(lt * 2), noShadow: true,
+    const o = { key: 'nuanB', sit: true, ...m, rot: (m.rot || 0) + .13 * lean, wing: .35 + .08 * Math.sin(lt * 2), noShadow: true,
       hold: (u, sw) => memBit(0, 0, u * .55, 1, 'bheld') };
     const tip = birdTip(XB, YB, UB, o);
     // the camera starts on the spark (the match from A), eases to frame her face, then pans right to the empty spot
