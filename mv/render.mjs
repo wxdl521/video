@@ -36,7 +36,7 @@ function playwrightChromes() {
 const CHROME = CHROMES.find(p => p && existsSync(p));
 if (!CHROME) { console.error('Chrome not found: pass --chrome=<path> or set CHROME_PATH'); process.exit(1); }
 // --cast=pig|claude renders the same film with another cast (studio.html?cast=…), into its own frames folder
-const fps = +(args.fps || 24), FRAMES_DIR = args.cast ? `out/frames_${args.cast}` : 'out/frames';
+const fps = +(args.fps || 24), FRAMES_DIR = (args['frames-dir'] || (args.cast ? `out/frames_${args.cast}` : 'out/frames')), OVERLAY_DIR = args['overlay-dir'] || 'out/overlay';
 const run = (cmd, a) => new Promise((ok, bad) => { const p = spawn(cmd, a, { stdio: 'inherit' }); p.on('close', c => c ? bad(new Error(cmd + ' exited ' + c)) : ok()); });
 const times = s => String(s).split(',').map(Number);
 const span = s => String(s).split(':').map(Number);
@@ -46,8 +46,10 @@ const fields = s => { const out = []; let d = 0, cur = ''; for (const ch of Stri
 if (args.encode) {
   const out = args.out || 'out/video.mp4', n = readdirSync(FRAMES_DIR).filter(f => f.endsWith('.jpg')).length, audio = args.audio;
   console.log(`encoding ${n} frames → ${out}${audio ? ' with ' + audio : ''}`);
+  const ov = args['with-overlay'];   // lay the karaoke PNGs (render.mjs --overlay) over the painted frames
   await run('ffmpeg', ['-y', '-loglevel', 'error', '-stats', '-framerate', String(fps), '-i', `${FRAMES_DIR}/f%05d.jpg`,
-    ...(audio ? ['-i', audio, '-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '192k', '-shortest'] : []),
+    ...(ov ? ['-framerate', String(fps), '-i', `${OVERLAY_DIR}/o%05d.png`, '-filter_complex', '[0:v][1:v]overlay=0:0:format=auto[v]'] : []),
+    ...(audio ? ['-i', audio, '-map', ov ? '[v]' : '0:v', '-map', `${ov ? 2 : 1}:a`, '-c:a', 'aac', '-b:a', '192k', '-shortest'] : ov ? ['-map', '[v]'] : []),
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out]);
   console.log('wrote ' + out);
   process.exit(0);
@@ -71,7 +73,7 @@ async function openPage(tag = '') {
   const page = await browser.newPage();
   page.on('console', m => { if (['error', 'warn'].includes(m.type())) console.log(`[page${tag}]`, m.text()); });
   page.on('pageerror', e => console.log(`[page error${tag}]`, e.message));
-  await page.goto(pathToFileURL(resolve('studio.html')).href + '?render' + (args.cast ? '&cast=' + args.cast : ''), { waitUntil: 'networkidle0', timeout: 180000 });
+  await page.goto(pathToFileURL(resolve('studio.html')).href + '?render' + (args.cast ? '&cast=' + args.cast : '') + (args.nokaraoke ? '&nokaraoke' : '') + (args.overlay ? '&overlay' : ''), { waitUntil: 'networkidle0', timeout: 180000 });
   await page.waitForFunction('window.ready === true', { timeout: 60000 });
   if (args.loop) {
     const ok = await page.evaluate(name => { if (!LOOPS[name]) return false; window.LOOP = LOOPS[name]; return true; }, args.loop);
@@ -114,6 +116,11 @@ if (args.sheet || args.strip) {
     while (next < n) { const i = next++; writeFileSync(`${out}/f${String(i).padStart(4, '0')}.png`, await frameOf(page, a + i / fps, 'image/png')); }
   }));
   console.log(`${n} frames → ${out}  (${((Date.now() - start) / n).toFixed(0)} ms/frame)`);
+} else if (args.overlay) {
+  const page = await openPage(), len = await lengthOf(page), n = Math.ceil(len * fps);
+  mkdirSync(OVERLAY_DIR, { recursive: true });
+  for (let i = 0; i < n; i++) { const url = await page.evaluate(t => window.renderOverlayAt(t), i / fps); writeFileSync(`${OVERLAY_DIR}/o${String(i).padStart(5, '0')}.png`, Buffer.from(url.slice(url.indexOf(',') + 1), 'base64')); }
+  console.log(`${n} overlay frames → ${OVERLAY_DIR}`);
 } else if (args.frames) {
   // Parallel and resumable: each worker pulls the next missing frame; files are written atomically.
   const probe = await openPage(), len = await lengthOf(probe); await probe.close();

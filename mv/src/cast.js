@@ -327,6 +327,60 @@ function humanBody(x, y, u, o = {}) {
   boilSeed(key + ' done');
 }
 
+// ---------- more shared pieces for the v2 storyboard ----------
+// where a scarf goes round the neck, per cast (local u units), for a scarf shared between two characters
+const NECK = { bird: [.8, -4.7], pig: [1.0, -4.5], claude: [1.0, -4.5], human: [.3, -5.25] }[CAST] || [.8, -4.7];
+const neckPt = (x, y, u, o) => birdPt(x, y, u, o, NECK[0] * u, NECK[1] * u);
+// a little firework rocket: (x, y) = the foot of its stick, s = height; rot 0 = upright; fuse 0..1 sparkles the fuse;
+// fizz = seconds since it fizzled (a weak spit of sparks and a puff of smoke)
+function rocketProp(x, y, s, o = {}) {
+  boilSeed('rocket ' + (o.key || ''));
+  push(); translate(x, y); rotate(o.rot || 0);
+  const sw = clamp(s / 90, .5, 1.4);
+  inkLine([[0, 0], [0, -s * .55]], sw * 1.2, COL.woodDk, 'ink', 0);
+  paint(rrPts(-s * .13, -s * 1.0, s * .26, s * .5, s * .05), { wash: COL.scarf, ink: PAL.ink, sw });
+  paint(rectPts(-s * .13, -s * .82, s * .26, s * .08), { wash: PAL.cream, ink: null });
+  paint([[-s * .16, -s * 1.0], [s * .16, -s * 1.0], [0, -s * 1.22]], { wash: PAL.cream, ink: PAL.ink, sw });
+  inkLine([[0, -s * .5], [s * .06, -s * .42], [s * .02, -s * .34]], sw * .8, PAL.ink, 'inkfine', .5);   // fuse
+  if (o.fuse > .02) { const fx = s * .02, fy = -s * .34; glow(fx, fy, s * .5, COL.gold, .9 * o.fuse);
+    for (let i = 0; i < 5; i++) { const a = T * 40 + i * 1.3, r = s * (.06 + .1 * frac(T * 7 + i * .3)); paint(starPts(fx + Math.cos(a) * r, fy + Math.sin(a) * r, s * .05, .4, 4), { wash: '#FFE6A0', ink: null }); } }
+  pop();
+  if (o.fizz != null && o.fizz >= 0 && o.fizz < 1.4) smokePuff(x, y - s * .9, s * .5, o.fizz, 'rk' + (o.key || ''));
+}
+// a puff of grey smoke that swells and fades over 1.4 s
+function smokePuff(x, y, r, age, key = 'puff') {
+  boilSeed('smoke ' + key);
+  const k = seg(age, 0, 1.4), f = 1 - k;
+  for (let i = 0; i < 5; i++) { const a = i / 5 * TAU + .4, d = r * (.3 + .8 * easeOut(k));
+    paint(ellPts(x + Math.cos(a) * d * .8, y - r * k * 1.2 + Math.sin(a) * d * .5, r * (.35 + .4 * k), r * (.3 + .35 * k), 12), { wash: '#B9B4C4', washOp: 220 * f, ink: f > .5 ? PAL.ink : null, sw: .6 }); }
+}
+// rain inside a box [x, y, w, h]: slanted streaks
+function rainfall(t, box, n = 40, col = '#C9D2E3') {
+  boilSeed('rain');
+  const [bx, by, bw, bh] = box;
+  for (let i = 0; i < n; i++) { const x = bx + frac(hash(i * 1.3) + t * .05) * bw, y = by + frac(hash(i * 3.7) + t * (1.2 + .4 * hash(i))) * bh, l = 26 + 20 * hash(i * 5);
+    if (y + l > by + bh) continue; inkLine([[x, y], [x - l * .25, y + l]], .9, col, 'inkfine', 0); }
+}
+// a puffy cloud: centre (x, y), w × h
+function cloudBlob(x, y, w, h, col, key = 'cloud') {
+  boilSeed('cloud ' + key);
+  const P = []; for (let i = 0; i < 40; i++) { const a = i / 40 * TAU, up = Math.sin(a) < 0, r = up ? 1 + .3 * Math.pow(Math.abs(Math.sin(a * 3 + hash(key.length))), .6) : 1;
+    P.push([x + Math.cos(a) * w / 2 * (up ? r * .95 : 1), y + Math.sin(a) * (up ? h * .7 : h * .35) * r]); }
+  paint(P, { wash: col, ink: mixCol(col, PAL.ink, .5), sw: .9, curv: .4 });
+}
+// a sky-and-sea set (dawn or dusk): o.top / o.horizon sky colours, o.sea, o.sun [x, y], o.sunCol
+function seaSet(t, o) {
+  for (let i = 0; i < 30; i++) flatRect(-1000, -600 + i * 46, W + 4000, 48, mixCol(o.top, o.horizon, ease(i / 29)));
+  const [sx, sy] = o.sun;
+  glow(sx, sy, 520, o.glowCol || '#FFC27A', .9);
+  boilSeed('sea sun'); paint(ellPts(sx, sy, 110, 110, 24), { wash: o.sunCol || '#FFD08A', ink: null });
+  flatRect(-1000, 700, W + 4000, 900, o.sea);
+  boilSeed('sea lines');
+  inkLine([[-1000, 700], [W + 3000, 700]], 1, PAL.ink, 'ink', 0);
+  for (let i = 0; i < 9; i++) { const y = 720 + i * 34 + i * i * 3, w = 220 - i * 12 + 30 * Math.sin(t * 2 + i); inkLine([[sx - w, y], [sx + w, y + 2]], 2.2 - i * .15, o.glint || '#FFC98A', 'ink', 0); }
+  for (let i = 0; i < 9; i++) { const y = 760 + i * 50, x0 = -900 + hash(i) * 600; inkLine(Array.from({ length: 16 }, (_, k) => [x0 + k * 300, y + 6 * Math.sin(k * 1.7 + t * 2 + i)]), .7, o.wave || '#4E3E6E', 'ink', .5); }
+}
+
 // ---------- props ----------
 // a memory piece: a little four-point star of light
 function memBit(x, y, r, k = 1, key = 'bit') {
@@ -446,7 +500,12 @@ function rooftops(t, y = 860, o = {}) {
   flat([[-300, y], [W + 300, y - 30], [W + 300, H + 300], [-300, H + 300]], COL.roof);
   boilSeed('roofs far');
   for (const [x, h, w] of far) inkLine([[x, y + 120 - h], [x + w / 2, y + 120 - h - 90], [x + w, y + 120 - h]], .8, mixCol(COL.night, PAL.ink, .5), 'ink', 0);
-  far.forEach(([x, h, w], i) => { if (hash(i * 11) > .4) { const wx = x + w * .3, wy = y + 120 - h + 40; paint(rectPts(wx, wy, 50, 60), { wash: '#F5C66E', ink: null }); glow(wx + 25, wy + 30, 90, COL.gold, .5 * (o.lights ?? 1)); } });
+  far.forEach(([x, h, w], i) => {
+    const on = o.litK == null ? (hash(i * 11) > .4 ? 1 : 0) : clamp((o.litK * 7 - i * .9));   // litK lights them left to right
+    const wx = x + w * .3, wy = y + 120 - h + 40;
+    if (on > .02) { paint(rectPts(wx, wy, 50, 60), { wash: mixCol('#3A4170', '#F5C66E', on), ink: null }); glow(wx + 25, wy + 30, 90, COL.gold, .5 * on * (o.lights ?? 1)); }
+    else if (o.litK != null) paint(rectPts(wx, wy, 50, 60), { wash: '#3A4170', ink: null });
+  });
   boilSeed('roof near');
   for (let i = 0; i < 14; i++) { const x = -260 + i * 170; inkLine([[x, y - i * 2.1 + 6], [x - 120, H + 80]], .8, COL.roofDk, 'ink', 0); }
   for (let j = 1; j < 4; j++) inkLine([[-300, y + j * 90], [W + 300, y + j * 90 - 30]], .7, COL.roofDk, 'ink', 0);
@@ -454,8 +513,12 @@ function rooftops(t, y = 860, o = {}) {
 }
 // a room wall with a window (wx, wy, ww, wh): the wall, the view (outside(), which paints inside the pane), the frame
 function roomWithWindow(wx, wy, ww, wh, outside, o = {}) {
-  flatRect(-3000, -3000, W + 6000, H + 6000, o.wall || COL.wall);
+  const wc = o.wall || COL.wall;
+  flatRect(-3000, -3000, W + 6000, H + 6000, wc);
   outside();
+  // wall again around the pane, so nothing painted outside (clouds, snow) shows past the window
+  flatRect(-3000, -3000, W + 6000, wy + 3000, wc); flatRect(-3000, wy + wh, W + 6000, 3000, wc);
+  flatRect(-3000, wy, wx + 3000, wh, wc); flatRect(wx + ww, wy, W + 6000, wh, wc);
   glow(wx + ww / 2, wy + wh / 2, ww * 1.3, o.lamp || '#F6DDB0', .25);
   boilSeed('window frame');
   paint(rectPts(wx - 18, wy - 18, ww + 36, wh + 36), { ink: COL.woodDk, sw: 2.2 });

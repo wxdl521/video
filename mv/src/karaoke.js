@@ -9,6 +9,15 @@
 const KFONT = '"Ma Shan Zheng", "Kaiti SC", "STKaiti", serif';
 window.EXTRA_FONTS = [[`64px ${KFONT}`, LY.map(l => l[2] + ((l[3] && l[3].pun && l[3].pun.to) || '')).join('')]];
 
+// The karaoke is its own layer, so a lyric fix never means repainting the film: render.mjs --nokaraoke paints frames
+// without it (?nokaraoke), --overlay renders just the karaoke on transparent PNGs (?overlay), and --encode lays one on the other.
+const KQ = new URLSearchParams(location.search);
+if (KQ.has('overlay')) window.renderOverlayAt = async t => {
+  T = t; BOILN = Math.floor(t * BOIL);
+  outX.setTransform(1, 0, 0, 1, 0, 0); outX.globalCompositeOperation = 'source-over'; outX.globalAlpha = 1; outX.clearRect(0, 0, W, H);
+  window.overlayHook(outX, t);
+  return outC.toDataURL('image/png');
+};
 window.overlayHook = (c, t) => {
   const i = LY.findIndex(l => t >= l[0] && t < l[1]);
   // a line with opts.hold stays up after its time, lifted and shrunk above the next one (two-row KTV style)
@@ -58,3 +67,5 @@ function pun(c, txt, x, y, p, age) {
   c.fillStyle = '#F4B63A'; c.fillText(p.to, 0, 0);
   c.restore();
 }
+
+if (KQ.has('nokaraoke')) window.overlayHook = null;
